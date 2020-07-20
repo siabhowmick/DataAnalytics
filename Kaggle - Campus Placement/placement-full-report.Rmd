@@ -1,0 +1,1439 @@
+---
+title: "Campus Placement Analysis for Jain University"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(readr)
+library(patchwork)
+library(dplyr) # To use knitr
+placement <- read.csv("~\\R\\win-library\\4.0\\My R Projects and Files\\Kaggle - Campus Placement\\Placement_Data_Full_Class.csv")
+placed <- placement[complete.cases(placement$salary), ]
+require(scales)
+```
+
+## Introduction {.tabset}
+
+### Overview
+
+The [dataset](https://www.kaggle.com/benroshan/factors-affecting-campus-placement) consists of campus placement data for MBA Business Analytics students from Jain University in Bangalore, India. There are 215 observations and 15 variables
+Dataset has information on:
+
+* placement status of the student
+* salary offered to students who were placed
+* MBA specialization and grade
+* Record of previous employment
+* specialization and grade for undergraduate, higher secondary, and secondary education
+
+
+
+### List of Variables
+
+* `sl_no`: Serial Number of the observations for each student
+* `gender`: Male = ‘M’; Female = ‘F’
+* `ssc_p`: Secondary Education percentage (10th grade)
+* `ssc_b`: Board of Education for Secondary (Central / Others)
+* `hsc_p`: Higher Secondary Education percentage (12th grade)
+* `hsc_b`: Board of Education for Higher Secondary (Central / Others)
+* `hsc_s`: Specialization in Higher Secondary Education (Commerce / Science / Other)
+* `degree_p`: Degree Percentage
+* `degree_t`: Under Graduation degree type (Field of education)
+* `workex`: Record of previous work experience (Yes / No)
+* `etest_p`: Employability test percentage (conducted by college)
+* `specialisation`: Post Graduation (MBA) specialization (Mkt&Fn / Mkt &HR)
+*  `mba_p`: MBA percentage
+* `status`: Status of placement (Placed / Not Placed)
+* `salary`: Annual salary offered by corporate to candidates who were placed
+
+
+## Exploratory Data Analysis {.tabset}
+
+The exploratory data analysis is divided into two sections. First, the relationship between `status` and all the relevant dependent variables, excluding `sl_no` and `salary`, are examined. In the second section, the influence on `salary` is inspected.
+
+&nbsp;  
+
+### Influence on Status
+
+&nbsp;  
+
+#### What is the placement rate?
+
+
+```{r echo=FALSE, out.width="50%", fig.cap="Student Campus Placement Rates"}
+ggplot(placement, aes(x = status)) +
+  theme_bw() +
+  geom_bar() +
+  labs(y = "Number of Students", 
+       title = "Student Campus Placement Rates")
+
+```
+
+```{r}
+prop.table(table(placement$status)) * 100
+```
+
+&nbsp;  
+
+**Remark:** Approximately 69% students were hired and 31% were not.
+
+&nbsp;  
+
+#### What is the status by work experience?
+
+Hypothesis is that candidates with previous work experience are likely to get hired.
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = workex, fill = status)) + 
+  theme_bw() + 
+  geom_bar() + 
+  labs(y = "Number of Students", 
+       title = "Stacked Bar Plot")
+
+# This will give the same plot as above but is structured a little different
+ggplot(placement, aes(x = workex)) + 
+  theme_bw() + 
+  geom_bar(aes(fill = status), position = "fill") + 
+  labs(y = "Number of Students", 
+       title = "Stacked Bar Plot - Proportion")
+```
+
+
+&nbsp;  
+
+**Remark:** The bar plot on the left shows that more students did not have work experience. The proportion bar plot on the right shows that almost 60% of students without work experience were placed, whereas the placement rate for students with work experience is almost 90%. This result matches with the hypothesis.
+
+&nbsp;  
+
+
+#### What is the status by employment test score?
+
+The employment test was conducted by the college. Hypothesis is that this test score positively influences the placement decision.
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = etest_p, fill = status)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students", 
+       x = "etest_p (binwidth = 1)", 
+    title = "Stacked Histogram Based on the Status")
+
+# Overlayed
+ggplot(placement, aes(x = etest_p, fill = status)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students", 
+       x = "etest_p (binwidth = 1)", 
+       title = "Overlayed Histogram Based on the Status")
+
+# Density Plot
+ggplot(placement, aes(x = etest_p, fill = status)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students", 
+       x = "etest_p", 
+       title = "Density Plot Based on the Status")
+
+# Testing with boxplot
+ggplot(placement, aes(x = status, y = etest_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(y = "etest_p", 
+       x = "status", 
+       title = "Box Plot for the Comparison")
+```
+
+&nbsp;  
+
+**Remark:** The histogram and density plots for employment test scores with respect to status shows that, in general, for higher test scores, a greater percentage of students were placed than not placed.
+
+The boxplot shows the test score for students who were not placed in the interquartile range 60-76 (median = 67), and for those placed in the interquartile range 60-85 (median = 72). Therefore, it is certain that students with high employment test scores were preferred for placement, but those with scores 60-76 who were also placed, there must be other factors that influenced it.
+
+&nbsp;  
+
+#### How does the status depend on both employement test and work experience?
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = etest_p, fill = workex)) + 
+  theme_bw() +
+  facet_wrap(~ status) +
+  geom_histogram(binwidth = 5) +
+  labs(y = "Student Count",
+       title = "Stacked Histogram")
+
+# Overlayed
+ggplot(placement, aes(x = etest_p, fill = workex)) + 
+  theme_bw() +
+  facet_wrap(~ status) +
+  geom_histogram(binwidth = 5, position = "identity", alpha = 0.6) +
+  labs(y = "Student Count",
+       title = "Overlayed Histogram")
+
+# Density Plot
+ggplot(placement, aes(x = etest_p, fill = workex)) + 
+  theme_bw() +
+  facet_wrap(~ status) +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students for Comparison",
+       title = "Density Plot")
+
+
+# Box Plot
+ggplot(placement, aes(x = etest_p, fill = workex)) + 
+  theme_bw() +
+  facet_wrap(~ status) +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Box Plot for Comparison")
+```
+
+
+&nbsp;  
+
+**Remark:** From the histogram plots it is clear that a very small percentage of students with previous work experience were not placed, and more among these students had low employment test score than high. However, for the students who were placed, `etest_p` scores does not seem to have any effect on the placement decision.
+
+Notice the comparision between the density and box plots, specifically how clear the distinction is for the box plot.
+
+In the box plot, we see that among the students who were not placed, the median etest score for those with work exprience were lower than those without. Among the students who were placed, we see the opposite, but the interquartile range almost overlaps. Comparing the status and employment test scores for students without work experience, we see that the interquartile range overlaps.
+
+&nbsp;  
+
+#### What is the effect of MBA test score on placement status?
+
+Hypothesis is that there is positive correlation.
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = mba_p, fill = status)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students", 
+       x = "mba_p (binwidth = 1)", 
+       title = "Stacked Histogram")
+
+# Overlayed
+ggplot(placement, aes(x = mba_p, fill = status)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students", 
+       x = "mba_p (binwidth = 1)", 
+       title = "Overlayed Histogram")
+
+# Density Plot
+ggplot(placement, aes(x = mba_p, fill = status)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students", 
+       x = "mba_p", 
+       title = "Density Plot for Comparison")
+
+# Box Plot
+ggplot(placement, aes(x = status, y = mba_p)) + 
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Box Plot for Comparison")
+```
+
+&nbsp;  
+
+**Remark:** The plot shows the hypothesis to hold for the lowest and the highest mba_p scores, but for the scores in between the visual evidence is not strong. So we cannot correctly conclude that the hypothesis holds.
+
+Specifically, the density plot and box plot show the interquaritlie range for Placed category (57-66) is wider and overlaps that of the Not Placed category (58-65). Distributions for both categories are skewed to the right. Median score for Placed is around 62 and median score for Not Placed is 61.
+
+&nbsp;  
+
+#### Did the MBA specialization play a role in the hiring process?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = specialisation, fill = status)) +
+  theme_bw() +
+  geom_bar() +
+  labs(y = "Student Count", 
+       title = "Stacked Bar Plot Showing Status")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = specialisation, fill = status)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Proportion", 
+       title = "Stacked Bar Plot Showing Proportion")
+```
+
+
+&nbsp;  
+
+**Remark:** We see that more students specialized in Mkt&Fin than Mkt&HR. In addition, we see that a more candidates with Mkt&Fin specialization were hired. Based on the proportion bar plot, the ratio of receiving placement for the two MBA streams is ~80% : ~55%.
+
+&nbsp;  
+
+#### What is the effect of undergraduate degree stream?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = degree_t, fill = status)) +
+  theme_bw() +
+  geom_bar() +
+  labs(y = "Student Count", 
+       title = "Stacked Bar Plot")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = degree_t, fill = status)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Proportion", 
+       title = "Stacked Bar Plot Based on Student Proportion")
+```
+
+
+&nbsp;  
+
+**Remark:** The first bar plot shows that the number of students in Comm&Mgmt are a lot more than Sci&Tech and other streams combined. But from the proportion bar plot We see that equal proportion of students from Comm&Mgmt and Sci&Tech were hired. And less than 50% of students from other streams were hired.
+
+
+&nbsp;  
+
+#### How does both undergraduate degree stream and degree test score reflect on status?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = degree_p, fill = status)) + 
+  theme_bw() +
+  facet_wrap(~ degree_t) +
+  geom_histogram(binwidth = 2) +
+  labs(y = "Student Count",
+       title = "Placement Status by Degree Stream and Degree Percentage")
+
+# Overlayed
+ggplot(placement, aes(x = degree_p, fill = status)) + 
+  theme_bw() +
+  facet_wrap(~ degree_t) +
+  geom_histogram(binwidth = 2, position = "identity", alpha = 0.6) +
+  labs(y = "Student Count",
+       title = "Placement Status by Degree Stream and Degree Percentage")
+
+# Density Plot
+ggplot(placement, aes(x = degree_p, fill = status)) + 
+  theme_bw() +
+  facet_wrap(~ degree_t) +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       title = "Placement Status by Degree Stream and Degree Percentage")
+
+# Box Plot
+ggplot(placement, aes(x = status, y = degree_p)) + 
+  theme_bw() +
+  facet_wrap(~ degree_t) +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Placement Status by Work Experience and MBA Score")
+```
+
+&nbsp;  
+
+**Remark:** According to the histograms and the density plot, across all streams, candidates with higher degree percentage were preferred. From the box plot it is noticed that for the other streams, the preferene for higher degree test is not as evident. _Note that when it comes to test scores the outliers in the box plot are not relevant._
+
+
+&nbsp;  
+
+
+#### How does both higher secondary degree stream and test score influence the placement decision?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = hsc_p, fill = status)) + 
+  theme_bw() +
+  facet_wrap(~ hsc_s) +
+  geom_histogram(binwidth = 2) +
+  labs(y = "Number of Students",
+       title = "Placement Status by hsc Stream and hsc Percentage")
+
+# Overlayed
+ggplot(placement, aes(x = hsc_p, fill = status)) + 
+  theme_bw() +
+  facet_wrap(~ hsc_s) +
+  geom_histogram(binwidth = 2, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students",
+       title = "Placement Status by hsc Stream and hsc Percentage")
+
+# Density Plot
+ggplot(placement, aes(x = hsc_p, fill = status)) + 
+  theme_bw() +
+  facet_wrap(~ hsc_s) +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       title = "Placement Status by hsc Stream and hsc Percentage")
+
+# Box Plot
+ggplot(placement, aes(x = status, y = hsc_p)) +
+  theme_bw() +
+  facet_wrap(~ hsc_s) +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Placement Status by hsc Stream and hsc Percentage")
+```
+
+&nbsp;  
+
+**Remark:** Dividing the placement status according to the science, commerce, and arts streams, we see that students who were placed generally had higher hsc scores than those who were not placed.
+
+&nbsp;  
+
+#### Did the secondary test score have an effect?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = ssc_p, fill = status)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students", 
+       x = "ssc_p (binwidth = 1)", 
+       title = "Placement Status Based on SSC Score") +
+  scale_y_continuous(limits=c(0, 13))
+
+# Overlayed
+ggplot(placement, aes(x = ssc_p, fill = status)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students", 
+       x = "ssc_p (binwidth = 1)", 
+       title = "Placement Status Based on SSC Score") +
+  scale_y_continuous(limits=c(0, 13))
+
+# Density Plot
+ggplot(placement, aes(x = ssc_p, fill = status)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students", 
+       x = "ssc_p", 
+       title = "Placement Status Based on SSC Score")
+
+# Box Plot
+ggplot(placement, aes(x = status, y = ssc_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Placement Status Based on SSC Score")
+```
+
+&nbsp;  
+
+**Remark:** For secondary school education the streams were not provided, or they do not exist. Based on the density plot and box plot we see that candidates with higher ssc percentages were preferred for placement. Students who were hired have a significantly high ssc test score and the interquartile range of for the two groups do not overlap.
+
+&nbsp;  
+
+#### Were students from any particular secondary and higher secondary school board preferred?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = hsc_b, fill = status)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Count", 
+       title = "Placement Status Based on hsc_b")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = ssc_b, fill = status)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Count", 
+       title = "Placement Status Based on ssc_b")
+```
+
+&nbsp;  
+
+**Remark:** There does not seem to be any visual evidence to suggest any particular is preferred than the other.
+
+&nbsp;  
+
+**_Thus far the visual analysis suggests that test scores from all secondary and post-secondary levels were taken into account when deciding which student/candidate to hire._**
+
+**_Now let us explore these test scores with respect to the MBA specializations and if one group fared better than the other in terms of their work experience._**
+
+&nbsp;  
+
+#### How does the MBA score vary over different specializations?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = mba_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "mba_p (binwidth = 1)",
+       title = "MBA stream vs MBA score")
+
+# Overlayed
+ggplot(placement, aes(x = mba_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students",
+       x = "mba_p (binwidth = 1)",
+       title = "MBA stream vs MBA score")
+
+# Densiity Plot
+ggplot(placement, aes(x = mba_p, fill = specialisation)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "specialisation",
+       x = "mba_p",
+       title = "MBA Stream vs MBA Score")
+
+# Box Plot
+ggplot(placement, aes(x = specialisation, y = mba_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA Stream vs MBA Score")
+```
+
+
+&nbsp;  
+
+**Remark:** The trend between MBA test scores and specializations is not clear from the histograms. But the density and box plots show that more students specializing Mkt&HR had lower scores and more students specializingin Mkt&Fin had higher scores. We also see from the boxplot that students in Mkt&Fin had a higher median score than those in Mkt&HR. Median score for Mkt&Fin students is around 63, and that for Mkt&HR students is around 61. For the second group, the distribution is skewed to the right.
+
+&nbsp;  
+
+#### How does the employement test score vary for MBA students based on their specialization?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = etest_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Studets",
+       x = "etest_p (binwidth = 1)",
+       title = "MBA stream vs employment test score")
+
+# Overlayed
+ggplot(placement, aes(x = etest_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Studets",
+       x = "etest_p (binwidth = 1)",
+       title = "MBA stream vs employment test score")
+
+# Density
+ggplot(placement, aes(x = etest_p, fill = specialisation)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "etest_p",
+       title = "MBA stream vs employment test score")
+
+# Box Plot
+ggplot(placement, aes(x = specialisation, y = etest_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA stream vs employment test score")
+```
+
+&nbsp;  
+
+**Remark:** Based on the density curve and box plot, we see that employement test scores for students in Mkt&Fin is more uniformly distributed, with a median score of 75. For Mkt&HR students, the test scores are skewed to the right, with a median score of 67.
+
+&nbsp;  
+
+#### What is the degree test score for students according to their MBA specialization?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked
+ggplot(placement, aes(x = degree_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "degree_p (binwidth = 1)",
+       title = "MBA stream vs degree score")
+
+# Overlayed
+ggplot(placement, aes(x = degree_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students",
+       x = "degree_p (binwidth = 1)",
+       title = "MBA stream vs degree score")
+
+# Density Plot
+ggplot(placement, aes(x = degree_p, fill = specialisation)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "degree_p",
+       title = "MBA stream vs degree score")
+
+# Box Plot
+ggplot(placement, aes(x = specialisation, y = degree_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA stream vs degree score")
+```
+
+&nbsp;  
+
+**Remark:** The histogram and density plots show that more students with Mkt&HR had lower degree scores, and more students specializing in Mkt&Fin scored higher. Based on the box plot, median degree test score for Mkt&Fin is 67 and that for Mkt&HR is 65. Even though the median scores for both specializations are almost the same, the scores for Mkt&Fin are skewed right and those for Mkt&HR are skewed left. Which means, more Mkt&Fin students scored in the second quartile (64 - 67), and more Mkt&HR students scored in the third quartile (65 - 69).
+
+&nbsp;  
+
+#### What is the higher secondary test score for students according to their MBA specialization?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked histogram
+ggplot(placement, aes(x = hsc_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "hsc_p (binwidth = 1)",
+       title = "MBA stream vs hsc test score")
+
+# Overlayed histogram
+ggplot(placement, aes(x = hsc_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students",
+       x = "hsc_p (binwidth = 1)",
+       title = "MBA stream vs hsc test score")
+
+# Density Plot
+ggplot(placement, aes(x = hsc_p, fill = specialisation)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "hsc_p",
+       title = "MBA stream vs hsc test score")
+
+# Box Plot
+ggplot(placement, aes(x = specialisation, y = hsc_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA stream vs hsc test score")
+```
+
+&nbsp;  
+
+**Remark:** Based on the density curve and box plot we see that the interquartile range for Mkt&Fin is 62-77, with a median around 67. For Mkt&HR the interquartile range is 57-70. and the median score is 63. The plots also show that test score distributions for both groups are slightly skewed right.
+
+&nbsp;  
+
+#### What is the secondary test score for students according to their MBA specialization?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = ssc_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "ssc_p",
+       title = "MBA stream vs ssc test score") +
+  scale_y_continuous(limits=c(0, 13))
+
+# Overlayed Histogram
+ggplot(placement, aes(x = ssc_p, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "ssc_p",
+       title = "MBA stream vs ssc test score")
+
+# Density Plot
+ggplot(placement, aes(x = ssc_p, fill = specialisation)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "ssc_p",
+       title = "MBA stream vs ssc test score")
+
+# Box Plot
+ggplot(placement, aes(x = specialisation, y = ssc_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA stream vs ssc test score")
+```
+
+&nbsp;  
+
+**Remark:** The density curve and box plot show that the ssc test score distribution for Mkt&Fin students are skewed left, with a median of 69. And the ssc test score distribution for Mkt&HR students are almost symmetrical, with a median of 65.
+
+&nbsp;   
+
+#### Is there a connection between MBA stream and work experience?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = specialisation, fill = workex)) +
+  theme_bw() +
+  geom_bar() +
+  labs(x = "specialisation", 
+       title = "MBA Specialization vs Work Experience")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = specialisation, fill = workex)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(x = "specialisation", 
+       title = "MBA Specialization vs Work Experience")
+```
+
+&nbsp;  
+
+**Remark:** The bar graph on the left shows there are more students specializing in Mkt&Fin than in Mkt&HR. From the proportion bar graph on the right we see that more students in Mkt&Fin with work experience than those in the Mkt&HR specialization.
+
+&nbsp;  
+
+#### Is there a connection between MBA test score and work experience?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = mba_p, fill = workex)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "MBA Test Score (binwidth = 1)",
+       title = "MBA score vs Work Experience")
+
+# Overlayed Histogram
+ggplot(placement, aes(x = mba_p, fill = workex)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "MBA Test Score (binwidth = 1)",
+       title = "MBA score vs Work Experience")
+
+# Density plot
+ggplot(placement, aes(x = mba_p, fill = workex)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "MBA Test Score",
+       title = "MBA score vs Work Experience")
+
+# Box Plot
+ggplot(placement, aes(x = workex, y = mba_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA score vs work experience")
+```
+
+&nbsp;  
+
+**Remark:** Students with work exprience generally have higher MBA score. From the density plot and box plot we see that test scores for students without job experience is skewed right, and test scores for students with work experience is symmetric. The median test score for students with work experience is around 64. The median test score for students without work experience is around 61.
+
+&nbsp;  
+
+**_We previously found that more students specializing in Mkt&Fin were hired than those in Mkt&HR. Based on the analysis of the test scores and work experiences of students with respect to their MBA specialization, we found that more students from Mkt&Fin had work experience and higher secondar and post-secondary test scores than those in Mkt&HR. _**
+
+**_Next, it is reasonable to wonder if gender played any role in the hiring process._**
+
+&nbsp;  
+
+#### Did gender play a role in the hiring process?
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = gender)) +
+  theme_bw() +
+  geom_bar() +
+  labs(y = "Student Count", 
+       title = "Gender Distribution")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = status, fill = gender)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Proportion", 
+       title = "Placement Status Based on Gender")
+```
+
+
+&nbsp;  
+
+**Remark:** The first bar plot on the left shows that there are less female stuents than male. The proportion bar plot on the right shows that around 60% of female students were placed and around 70% of male students were placed. At this point it is not evident if gender played a role in the placement process.
+
+&nbsp;  
+
+#### What is the work experience according to the gender?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = gender, fill = workex)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Proportion", 
+       title = "Gender Categorized by Work Experience")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = workex, fill = gender)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Proportion", 
+       title = "Work Experience Categorized by Gender")
+```
+
+&nbsp;  
+
+**Remark:** The proportion bar plot on the left shows that there are more male students with work experience than female.
+
+From the proportion bar plot on the right we see that among those students with work experience, around 70% are male and 30% are female. In case of those students without work experience, around 62% are male and 38% are female.
+
+&nbsp;  
+
+#### Is there a preference for MBA specialization according to gender?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placement, aes(x = specialisation, fill = gender)) +
+  theme_bw() +
+  geom_bar() +
+  labs(y = "Student Count", 
+       title = "MBA Specialization Based on Gender")
+
+# With position = "fill" for proportion within each group
+ggplot(placement, aes(x = specialisation, fill = gender)) +
+  theme_bw() +
+  geom_bar(position = "fill") +
+  labs(y = "Student Proportion", 
+       title = "MBA Specialization Based on Gender")
+```
+
+&nbsp;  
+
+**Remark:** The proportion bar plot on the right shows that more female students specialized in Mkt&HR and more male students specialized in Mkt&Fin.
+
+&nbsp;  
+
+#### How did students from each gender perform on the MBA test?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = mba_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "MBA Test Score (binwidth = 1)",
+       title = "MBA score vs Gender")
+
+# Overlayed Histogram
+ggplot(placement, aes(x = mba_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "MBA Test Score (binwidth = 1)",
+       title = "MBA score vs Gender")
+
+# Density plot
+ggplot(placement, aes(x = mba_p, fill = gender)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "MBA Test Score",
+       title = "MBA Test Score vs Gender")
+
+# Box Plot
+ggplot(placement, aes(x = gender, y = mba_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "MBA Test Score vs Gender")
+```
+
+&nbsp;  
+
+**Remark:** From the overlayed histogram, density plot, and box plot we see that MBA test scores for male students are skewed to the right, and the scores for the female students is skewed slightly to the left (almost symmetrical). The median score for female students is almost 65 and that for male students is 61. The box plot also shows some extremely high scores for male students as outliers from the trend observed. Therefore, it can be concluded that more female students performed better in the MBA test.
+
+&nbsp;  
+
+#### How did students from each gender perform on the employment test?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = etest_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "Employment Test Score (binwidth = 1)",
+       title = "Employment Test Score vs Gender")
+
+# Overlayed Histogram
+ggplot(placement, aes(x = etest_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "Employment Test Score (binwidth = 1)",
+       title = "Employment Test Score vs Gender")
+
+# Density plot
+ggplot(placement, aes(x = etest_p, fill = gender)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Employment Test Score",
+       title = "Employment Test Score vs Gender")
+
+# Box Plot
+ggplot(placement, aes(x = gender, y = etest_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Employment Test Score vs Gender")
+```
+
+&nbsp;  
+
+**Remark:** The density curves for employement test scores for both genders show multimodal distribution of the data. The blue density curve have two peaks, one around 60 and one around 85. The pink density curve have two peaks around 58 and 90, and a small plateau around 70. The prominent peaks for both curves overlap around the same regions, where the peaks around the lower scores (58 and 60) have higher density, and the peaks around the higher scores (85 and 90) have lower density. This corresponds to the possibility that students with work experience performed better at the employment test. The lower density for the higher scores is in agreement with the finding that fewer students have previous work experience. According to the box plot, median score for female students is around 69 and that for male students is around 72.
+
+Therefore, it can be concluded that more male students performed better in the employment test.
+
+&nbsp;  
+
+#### How did students from each gender perform on the degree test?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = degree_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "Degree Test Score (binwidth = 1)",
+       title = "Degree Test Score vs Gender")
+
+# Overlayed Histogram
+ggplot(placement, aes(x = degree_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "Degree Test Score (binwidth = 1)",
+       title = "Degree Test Score vs Gender")
+
+# Density plot
+ggplot(placement, aes(x = degree_p, fill = gender)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Degree Test Score)",
+       title = "Degree Test Score vs Gender")
+
+# Box Plot
+ggplot(placement, aes(x = gender, y = degree_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Degree Test Score vs Gender")
+```
+
+&nbsp;  
+
+**Remark:** The density curves and box plot show that the degree test score distribution for male and female students is slightly skewed to the right. Median score for female students is around 67, and median score for male students is 65. It can be concluded that more female students performed better in the degree test.
+
+&nbsp;  
+
+#### How did students from each gender perform on the higher secondary test?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = hsc_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "Hsc Test Score (binwidth = 1)",
+       title = "Hsc Test Score vs Gender")
+
+# Overlayed Histogram
+ggplot(placement, aes(x = hsc_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "Hsc Test Score (binwidth = 1)",
+       title = "Hsc Test Score vs Gender")
+
+# Density plot
+ggplot(placement, aes(x = hsc_p, fill = gender)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Hsc Test Score",
+       title = "Hsc Test Score vs Gender")
+
+# Box Plot
+ggplot(placement, aes(x = gender, y = hsc_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Hsc Test Score vs Gender")
+```
+
+&nbsp;  
+
+**Remark:** The density plot and box plot show that the higher secondary test score for male and female students is almost identical. For both genders, the distributions are sligtly skewed to the right, the median scores are in the range 62-63, and the interquartile range is approximately 60-67.
+
+&nbsp;  
+
+#### How did students from each gender perform on the secondary test?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked Histogram
+ggplot(placement, aes(x = ssc_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1) +
+  labs(y = "Number of Students",
+       x = "Ssc Test Score (binwidth = 1)",
+       title = "Ssc Test Score vs Gender")
+
+# Overlayed Histogram
+ggplot(placement, aes(x = ssc_p, fill = gender)) +
+  theme_bw() +
+  geom_histogram(binwidth = 1, position = "identity", alpha = 0.6) +
+  labs(y = "Proportion of Students",
+       x = "Ssc Test Score (binwidth = 1)",
+       title = "Ssc Test Score vs Gender")
+
+# Density plot
+ggplot(placement, aes(x = ssc_p, fill = gender)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Ssc Test Score",
+       title = "Ssc Test Score vs Gender")
+
+# Box Plot
+ggplot(placement, aes(x = gender, y = ssc_p)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Ssc Test Score vs Gender")
+```
+
+&nbsp;  
+
+**Remark:** The density plot and box plot show that secondary school test scores for male students are skewed slightly to the right with a median score of 65. The test score for female students is skewed to the left with a median score of 70. It can be concluded that more female students performed better in the secondary school test.
+
+&nbsp;  
+
+**_Visual analysis of the test scores based on gender shows that for the most part female students performed better in the academic tests. Male students performed better in the employment test because of a larger number of male students than female had work experience._**
+
+&nbsp;  
+
+
+
+
+
+
+### Influence on Salary
+
+&nbsp;  
+
+#### What is the numeric range of the salaries offered?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placed, aes(x = salary)) +
+  theme_bw() + 
+  geom_histogram() + 
+  labs(x = "Salary (Rs.)", 
+       y = "Number of Students", 
+       title = "Histogram Plot of the Salaries Offered") +
+  scale_x_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** The salary offered ranges from roughly Rs.200,000 to Rs.950,000. And the median salary is around Rs.265,000.
+
+&nbsp; 
+
+#### How does the salary for hired students vary based on their gender?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Overlayed histogram
+ggplot(placed, aes(x = salary, fill = gender)) +
+  theme_bw() +
+  geom_histogram(position = "identity", alpha = 0.6) +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on Gender") +
+  scale_x_continuous(labels = comma)
+
+# Density plot
+ggplot(placed, aes(x = salary, fill = gender)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Bsed on Gender") +
+  scale_x_continuous(labels = comma)
+
+# Box plot
+ggplot(placed, aes(x = gender, y = salary)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(y = "Salary (Rs.)",
+       title = "Salary Based on Gender") +
+  scale_y_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** From all three plots we see that the salaries for both genders are skewed right, similar to the overal salary distribution. We see that the lowest salary offered to both genders were Rs.200,000. For female students the median salary is around Rs.250,000 and the interquatile range is Rs.220,000 - Rs.300,000. For male students the median salary is Rs.275,000 and the interquartile range is Rs.225,000 - Rs.300,000. In the box plot we see outliers in the form of salary offered to a single female student at Rs.650,000. For male students, we see an extremely large number of salary beyond fourth quartile in the range from Rs.375,000 - Rs.925,000.
+
+&nbsp; 
+
+#### How does the salary for hired students vary based on their MBA specialization?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked histogram
+ggplot(placed, aes(x = salary, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram() +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on MBA Specialization") +
+  scale_x_continuous(labels = comma)
+
+# Overlayed histogram
+ggplot(placed, aes(x = salary, fill = specialisation)) +
+  theme_bw() +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on MBA Specialization") +
+  scale_x_continuous(labels = comma)
+
+# Density plot
+ggplot(placed, aes(x = salary, fill = specialisation)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Salary (alpha = 0.5)",
+       title = "Salary Based on MBA Specialization") +
+  scale_x_continuous(labels = comma)
+
+# Box plot
+ggplot(placed, aes(x = specialisation, y = salary)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Salary Based on MBA Specialization") +
+  scale_y_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** Based on the overlayed histogram and box plot we see that the median salary offered to placed students from Mkt&Fin are higher than that of Mkt&HR. We also see that really high salaries in the range Rs.500,000 - Rs.950,000 were offered to students in Mkt&Fin. Highest salary offered to students placed in Mkt&HR is approximately Rs.460,000.
+
+&nbsp; 
+
+#### Did students with work experience receive higher salary?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked histogram
+ggplot(placed, aes(x = salary, fill = workex)) +
+  theme_bw() +
+  geom_histogram() +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on Work Experience") +
+  scale_x_continuous(labels = comma)
+
+# Overlayed histogram
+ggplot(placed, aes(x = salary, fill = workex)) +
+  theme_bw() +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on Work Experience") +
+  scale_x_continuous(labels = comma)
+
+# Density plot
+ggplot(placed, aes(x = salary, fill = workex)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Salary (alpha = 0.5)",
+       title = "Salary Based on Work Experience") +
+  scale_x_continuous(labels = comma)
+
+# Box plot
+ggplot(placed, aes(x = workex, y = salary)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  labs(title = "Salary Based on Work Experience") +
+  scale_y_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** From the density plot we see that a similar proportion of stduents with and without work experience received salaries between Rs.200,000 - Rs.450,000. However, those in the salaries in the range of Rs.600,000 - Rs.800,000 were exclusively offered to those with work experience.
+
+Note that when we compare this density plot with that from comparison of salary based on MBA specialization (remark for salary vs specialization), we see that the students in the higher salary range are excluseively from Mkt&Fin.
+
+Upon comparison with the graph for salary and gender (remark for salary vs gender), we see that both male and female students belong to that salary bracket.
+
+&nbsp; 
+
+#### Did the undergraduate degree stream influence the salary offered?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+# Stacked histogram
+ggplot(placed, aes(x = salary, fill = degree_t)) +
+  theme_bw() +
+  geom_histogram() +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on College Degree Stream") +
+  scale_x_continuous(labels = comma)
+
+# Overlayed histogram
+ggplot(placed, aes(x = salary, fill = degree_t)) +
+  theme_bw() +
+  geom_histogram(position = "identity", alpha = 0.5) +
+  labs(y = "Number of Students",
+       x = "Salary (Rs.)",
+       title = "Salary Based on College Degree Stream") +
+  scale_x_continuous(labels = comma)
+
+# Density plot
+ggplot(placed, aes(x = salary, fill = degree_t)) +
+  theme_bw() +
+  geom_density(alpha = 0.5) +
+  labs(y = "Proportion of Students",
+       x = "Salary (alpha = 0.5)",
+       title = "Salary Based on College Degree Stream") +
+  scale_x_continuous(labels = comma)
+
+# Box plot
+ggplot(placed, aes(x = degree_t, y = salary)) +
+  theme_bw() +
+  geom_boxplot(varwidth = TRUE) +
+  stat_summary(
+    aes(label = round(stat(y), 1)),
+    geom = "text", 
+    fun.y = function(y) { o <- boxplot.stats(y)$out; if(length(o) == 0) NA else o },
+    hjust = -1
+  ) +
+  labs(title = "Salary Based on College Degree Stream") +
+  scale_y_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** Sci&Tech and Comm&Mgmt students received highest salaries. For all three streams the salary distributions are skewed to the right. Salaries above Rs.400,000 went to Sci&Tech and Comm&Mgmt students only, with the latter group receiving a larger number of salaries beyong the fourth quartile.
+
+&nbsp; 
+
+#### Did the salary depend on the MBA test score? How did work experience influence it?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placed, aes(x = salary, y = mba_p, color = workex)) +
+  theme_bw() +
+  geom_point(shape = 19, size = 3) +
+  geom_text(data = subset(placed, salary > 600000), 
+            aes(x = salary, y = mba_p, label = sl_no), vjust = -1) +
+  labs(title = "Scatter plot for salary against MBA test score") +
+  scale_x_continuous(labels = comma)
+
+ggplot(placed, aes(x = salary, y = mba_p, color = workex)) +
+  theme_bw() +
+  geom_boxplot() +
+  labs(title = "Salary based on work experience and MBA test score") +
+  scale_x_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** From the scatter plot we see that regardless of the MBA test score, only students with work experience were offered salaries in the extremely high range. This implies that other factors are likely to have influenced this decision.
+
+From the box plot we see that among the students hired, the median MBA test score is higher for those with work experience. Students without work experience received a much lower salary. Maximum salary offered to students without work experience is a little under Rs.500,000.
+
+&nbsp; 
+
+#### Did the salary depend on the employment test score? How did work experience influence it?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placed, aes(x = salary, y = etest_p, color = workex)) +
+  theme_bw() +
+  geom_point(shape = 19, size = 3) +
+  geom_text(data = subset(placed, salary > 600000), 
+            aes(x = salary, y = etest_p, label = sl_no), vjust = -1) +
+  labs(title = "Scatter plot for salary against employment test score") +
+  scale_x_continuous(labels = comma)
+
+ggplot(placed, aes(x = salary, y = etest_p, color = workex)) +
+  theme_bw() +
+  geom_boxplot() +
+  labs(title = "Salary based on work experience and employment test score") +
+  scale_x_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** The scatter plot shows that the highest salaries were offered only to students who had work experience regardless of their empployment test score. This implies other factors are likely to have influenced this decision.
+
+From the box plot we see that among the students hired, the median empployment test score is slightly higher for those with work experience. Students without work experience received a much lower salary. Maximum salary offered to students without work experience is a little under Rs.500,000.
+
+&nbsp; 
+
+#### Did the salary depend on the undergraduate degree test score? How did work experience influence it?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placed, aes(x = salary, y = degree_p, color = workex)) +
+  theme_bw() +
+  geom_point(shape = 19, size = 3) +
+  geom_text(data = subset(placed, salary > 600000), 
+            aes(x = salary, y = degree_p, label = sl_no), vjust = -1) +
+  labs(title = "Scatter plot for salary against degree test score") +
+  scale_x_continuous(labels = comma)
+
+ggplot(placed, aes(x = salary, y = degree_p, color = workex)) +
+  theme_bw() +
+  geom_boxplot() +
+  labs(title = "Salary based on work experience and degree test score") +
+  scale_x_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** The scatter plot on the left shows for salaries less than Rs.500,000 an even distribution of salaries between students with and without work experience. Salaries larger than Rs.500,000 were offered specifically to students with work experience, regardless of their degree test score. It is reasonable to suggest that other factors have influenced this decision.
+
+From the box plot we see no significant difference in degree test scores based on the students' work experience.However, students without work experience still received a much lower salary. Maximum salary offered to students without work experience is a little under Rs.500,000.
+
+&nbsp; 
+
+#### Did the salary depend on the higher secondary test score? How did work experience influence it?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placed, aes(x = salary, y = hsc_p, color = workex)) +
+  theme_bw() +
+  geom_point(shape = 19, size = 3) +
+  geom_text(data = subset(placed, salary > 600000), 
+            aes(x = salary, y = hsc_p, label = sl_no), vjust = 1.5) +
+  labs(title = "Scatter plot for salary against MBA test score") +
+  scale_x_continuous(labels = comma)
+
+ggplot(placed, aes(x = salary, y = hsc_p, color = workex)) +
+  theme_bw() +
+  geom_boxplot() +
+  labs(title = "Salary based on work experience and hsc test score") +
+  scale_x_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** The scatter plot on the left shows for salaries less than Rs.500,000 an even distribution of salaries between students with and without work experience. Salaries larger than Rs.500,000 were offered specifically to students with work experience, regardless of their higher secondary test score. It is reasonable to suggest that other factors have influenced this decision.
+
+From the box plot we see no significant difference in higher secondary school test scores based on the students' work experience.However, students without work experience still received a much lower salary. Maximum salary offered to students without work experience is a little under Rs.500,000.
+
+&nbsp; 
+
+#### Did the salary depend on the secondary test score? How did work experience influence it?
+
+&nbsp;  
+
+```{r echo=FALSE, message=FALSE, out.width="50%"}
+ggplot(placed, aes(x = salary, y = ssc_p, color = workex)) +
+  theme_bw() +
+  geom_point(shape = 19, size = 3) +
+  geom_text(data = subset(placed, salary > 600000), 
+            aes(x = salary, y = ssc_p, label = sl_no), vjust = -1) +
+  labs(title = "Scatter plot for salary against MBA test score") +
+  scale_x_continuous(labels = comma)
+
+ggplot(placed, aes(x = salary, y = ssc_p, color = workex)) +
+  theme_bw() +
+  geom_boxplot() +
+  labs(title = "Salary based on work experience and ssc test score") +
+  scale_x_continuous(labels = comma)
+```
+
+&nbsp;  
+
+**Remark:** The scatter plot on the left shows for salaries less than Rs.500,000 an even distribution of salaries between students with and without work experience. Salaries larger than Rs.500,000 were offered specifically to students with work experience, regardless of their secondary test score. It is reasonable to suggest that other factors have influenced this decision.
+
+From the box plot we see students with work experience scored slightly better in the secondary school test. Students with work experience still received a much lower salary. Maximum salary offered to students without work experience is a little under Rs.500,000.
+
+&nbsp; 
+
+**_For the last five inspection of salary with respect to the five test scores we can see that there were always three students with work experience that received salaries above Rs.600,000. The following table shows the observations related to these three students._**
+
+&nbsp; 
+
+```{r}
+highsal <- knitr::kable(placed %>%
+               filter(salary > 600000))
+highsal
+```
+
+
+&nbsp; 
+
+**Remark:** The table above lists the three students who were offered salary greater than Rs.600,000. We see that all three students had work experience and specialized in Mkt&Fin. Two of them are male and one female. Two students from Commerce and one from Sci&Tech. The test scores did not seem to have speicifically influenced the salaries as we see test scores in the approximate range of50-80.
+
+&nbsp; 
+
+## Conclusion
+
+TBD
+
+
+
+```{r}
+ggplot(placed, aes(x = degree_t, y = salary)) + 
+  geom_boxplot() +
+  stat_summary(
+    aes(label = round(stat(y), 1)),
+    geom = "text", 
+    fun.y = function(y) { o <- boxplot.stats(y)$out; if(length(o) == 0) NA else o },
+    hjust = -1
+  )
+```
+
